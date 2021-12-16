@@ -1,9 +1,8 @@
 <% layout('layouts/boilerplate') %>
-<link rel="stylesheet" href="/styesheets/stars.css">
+<link rel="stylesheet" href="/stylesheets/stars.css">
 
 <div class="row">
     <div class="col-6">
-      <div id='map' style='width: 400px; height: 300px;'></div>
       <div id="campgroundCarousel" class="carousel slide" data-bs-ride="carousel">
         <div class="carousel-inner">
           <% camp.images.forEach((img, i) => { %>
@@ -47,6 +46,7 @@
         </div>
     </div>
     <div class="col-6">
+      <div id='map' class="mb-3"></div>
       <h2>Leave a review</h2>
         <form action="/campgrounds/<%=camp._id%>/reviews" method="POST" class="mb-3 validated-form" novalidate>'
           <!-- <div class="mb-3">
