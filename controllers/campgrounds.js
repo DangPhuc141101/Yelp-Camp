@@ -5,17 +5,20 @@ const mapBoxToken = process.env.MAPBOX_TOKEN;
 const geocoding = mbxGeocoding({ accessToken : mapBoxToken });
 
 module.exports.index = async (req, res) => {
-    const page = parseInt(req.query.page);
+    const page = parseInt(req.query.page) || 1;
     const pageSize = 20;
-
+    
     Campground.find({})
         .skip(pageSize * (page - 1 ))
         .limit(pageSize)
         .then(camps =>{
             Campground.countDocuments({}, (err, total) =>{
                 var numPage = Math.ceil(total / pageSize);
-                res.render('campgrounds/index', {campgrounds : camps, numPage});
+                res.render('campgrounds/index', {campgrounds : camps, numPage, currentPage : page});
             })
+        })
+        .catch(err => {
+            console.log('Oh no, ERR!!! ', err);
         })
 }
 

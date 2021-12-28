@@ -13,12 +13,17 @@ const ExpressError = require('./utils/ExpressError');
 const campgroundsRouter = require('./routers/campgrounds');
 const reviewsRouter = require('./routers/reviews');
 const userRouter = require('./routers/users');
+const mongoSanitize = require('express-mongo-sanitize');
 
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const User = require('./models/user');
+const helmet = require('helmet');
+const MongoStore  = require('connect-mongo');
 
-mongoose.connect('mongodb://localhost:27017/yelp-camp', {
+const dbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp';
+//'mongodb://localhost:27017/yelp-camp'
+mongoose.connect(dbUrl, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 });
@@ -39,8 +44,24 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 app.use(methodOverride('_method'));
 app.use(express.static('public'));
+app.use(mongoSanitize({
+    replaceWith: '_',
+  }));
+
+  const secret = process.env.SECRET || 'thisisshouldbeabettersecret';
+const store = MongoStore.create({
+        mongoUrl : dbUrl,
+        secret,
+        touchAfter: 24 * 60 * 60
+    })
+
+store.on("error", function (e){
+    console.log('SESSION STORE ERROR', e);
+})
+
 const sessionConfig = {
-    secret: 'thisshouldbeabettersecret',
+    store,
+    secret,
     resave: false,
     saveUninitialized: true,
     cookie: {
@@ -51,6 +72,51 @@ const sessionConfig = {
 }
 app.use(session(sessionConfig));
 app.use(flash());
+
+app.use(helmet());
+const scriptSrcUrls = [
+    "https://stackpath.bootstrapcdn.com/",
+    "https://api.tiles.mapbox.com/",
+    "https://api.mapbox.com/",
+    "https://kit.fontawesome.com/",
+    "https://cdnjs.cloudflare.com/",
+    "https://cdn.jsdelivr.net",
+];
+const styleSrcUrls = [
+    "https://kit-free.fontawesome.com/",
+    "https://stackpath.bootstrapcdn.com/",
+    "https://api.mapbox.com/",
+    "https://api.tiles.mapbox.com/",
+    "https://fonts.googleapis.com/",
+    "https://use.fontawesome.com/",
+];
+const connectSrcUrls = [
+    "https://api.mapbox.com/",
+    "https://a.tiles.mapbox.com/",
+    "https://b.tiles.mapbox.com/",
+    "https://events.mapbox.com/",
+];
+const fontSrcUrls = [];
+app.use(
+    helmet.contentSecurityPolicy({
+        directives: {
+            defaultSrc: [],
+            connectSrc: ["'self'", ...connectSrcUrls],
+            scriptSrc: ["'unsafe-inline'", "'self'", ...scriptSrcUrls],
+            styleSrc: ["'self'", "'unsafe-inline'", ...styleSrcUrls],
+            workerSrc: ["'self'", "blob:"],
+            objectSrc: [],
+            imgSrc: [
+                "'self'",
+                "blob:",
+                "data:",
+                "https://res.cloudinary.com/duy-t-n/", //SHOULD MATCH YOUR CLOUDINARY ACCOUNT! 
+                "https://images.unsplash.com/",
+            ],
+            fontSrc: ["'self'", ...fontSrcUrls],
+        },
+    })
+);
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -78,11 +144,11 @@ app.all('*', (req, res, next) => {
     next(new ExpressError('Page not found', 404));
 });
 
-app.use((err, req, res, nest) => {
+app.use((err, req, res, next) => {
     const {statusCode = 500, message = 'Something went wrong'} = err;
     if (!err.message) error.message = 'Oh no, Something went wrong!';
     res.status(statusCode).render('error', {err});
-}); 
+});
 
 app.listen(3000, () =>{
     console.log('Serving on port 3000');

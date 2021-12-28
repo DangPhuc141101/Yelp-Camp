@@ -1,11 +1,13 @@
 const mongoose = require('mongoose');
 const Campground = require('../models/campground');
+const User = require('../models/user');
 const cities = require('./cities')
 const {descriptors, places} = require('./seedHelpers')
 const mbxGeocoding = require('@mapbox/mapbox-sdk/services/geocoding');
 const geocoding = mbxGeocoding({ accessToken : 'pk.eyJ1IjoiZGFuZ3BodWMiLCJhIjoiY2t3cDFzMGh6MDhocTJyazBhMnZ3Y3BuNSJ9.QA1VaJarRhGuLO-4kxlNdg' });
-
-mongoose.connect('mongodb://localhost:27017/yelp-camp', {
+const dbUrl = 'mongodb+srv://db-yelp-camp:SyYqeih73CGQJcb@cluster0.ysved.mongodb.net/yelp-camp?retryWrites=true&w=majority'
+//'mongodb://localhost:27017/yelp-camp'
+mongoose.connect(dbUrl, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 });
@@ -22,6 +24,11 @@ const randomPrice = () => Math.floor(Math.random() * 10 +1 ) * 100;
 
 const seedDB = async () => {
     await Campground.deleteMany({});
+    await User.deleteMany({});
+    const email = 'admin@gmail.com', username = 'admin', password = 'admin';
+    const user = new User({email, username});
+    const registerUser = await User.register(user, password);
+    
     for (let i=0; i<300; i++) {
         const random1000 = Math.floor(Math.random() * 1000);
         const location = `${cities[random1000].city}, ${cities[random1000].state}`;
@@ -31,7 +38,7 @@ const seedDB = async () => {
         }).send()
         
         const camp = new Campground({
-            author: '61985da721a25eda3d9bcfad',
+            author: user._id,
             geometry: geoData.body.features[0].geometry,
             location : location,
             title : `${myRandom(descriptors)}, ${myRandom(places)}`,
